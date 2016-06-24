@@ -8,10 +8,27 @@ It uses:
 2. `collectd`: for monitoring. clients and server.
 3. `ivrapp`: simple backend app to provide menu, gather digits, provide request statistics. it accepts '5' digit only.
 
-To run env you should:
+We support 3 env types
+
+1. local
+2. aws
+3. openstack
+
+### bootstrap aws env
 
 1. create `.aws_credentilas` file. There are example: `.aws_credentials_example`
 2. run `install.sh`
+
+### bootstrap openstack env
+
+1. create `.openstack_credentials` file. There are example: `.openstack_credentials_example`
+2. run `install.sh`
+
+### bootstrap local env
+
+1. it's `default` env, but it doesn't support `collectd` now
+2. to run `local` please remove `.aws_credentilas` and `.openstack_credentials`
+3. run `install.sh`
 
 When env is ready you can start test. 
 
