@@ -2,15 +2,30 @@
 
 source ./machine.sh
 
-if [ ${INSTANCES_MEM["$INSTANCE_TYPE"]} -gt 6 ]; then
-    echo "Setup memory settings"
+echo "Instance type memory: ${INSTANCES_MEM["$INSTANCE_TYPE"]}"
+
+if [ ${INSTANCES_MEM["$INSTANCE_TYPE"]} -ge 4 ]; then
+    echo "Setup memory settings: 4G"
+    java_opt='-Djava.net.preferIPv4Stack=true -Xms2g -Xmx4g -Xmn512m -XX:MaxPermSize=512m -XX:+CMSIncrementalPacing -XX:CMSIncrementalDutyCycle=100 -XX:CMSIncrementalDutyCycleMin=100 -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode -Dsun.rmi.dgc.client.gcInterval=3600000 -Dsun.rmi.dgc.server.gcInterval=3600000'
+fi
+
+if [ ${INSTANCES_MEM["$INSTANCE_TYPE"]} -ge 6 ]; then
+    echo "Setup memory settings: 6G"
     java_opt='-Djava.net.preferIPv4Stack=true -Xms4g -Xmx6g -Xmn512m -XX:MaxPermSize=512m -XX:+CMSIncrementalPacing -XX:CMSIncrementalDutyCycle=100 -XX:CMSIncrementalDutyCycleMin=100 -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode -Dsun.rmi.dgc.client.gcInterval=3600000 -Dsun.rmi.dgc.server.gcInterval=3600000'
 fi
+
+get_docker_config(){
+    if [ "$TEST_ENGINE" = 'local' ]; then
+        return 0
+    else
+        echo `docker-machine config $1`
+    fi
+}
 
 echo "Creating mysql database"
 
 docker \
-    $(docker-machine config mysql) \
+    $(get_docker_config mysql) \
     run \
     -d \
     --name mysql \
@@ -31,14 +46,14 @@ sleep 15
 echo "Creating mediaserver container"
 
 docker \
-    $(docker-machine config restcomm-media) \
+    $(get_docker_config restcomm-media) \
     run \
     -d \
     --name mediaserver \
     --net host \
     --privileged \
     -e USE_HOST_NETWORK=true \
-    -e AMAZON_EC2=true \
+    -e PROPERTY_externalAddress=$MEDIASERVER_IP_PUBLIC \
     -e PROPERTY_media_lowestPort=64000 \
     -e PROPERTY_media_highestPort=65500 \
     -e RESOURCE_recorder=0 \
@@ -48,8 +63,12 @@ docker \
     -e ESOURCE_remoteConnection=200 \
     -e LOG_LEVEL=WARN \
     -e RESOURCE_player=200 \
-    hamsterksu/restcomm-mediaserver:cache
+    -e JAVA_OPTS="$java_opt" \
+    hamsterksu/restcomm-mediaserver:4.2.0.68
 
+#hamsterksu/restcomm-mediaserver:cache
+
+#-e AMAZON_EC2=true \
 #-e JAVA_OPTS="$java_opt" \
 #-e RESOURCE_player=200 \
 
@@ -59,7 +78,7 @@ echo ""
 echo "Creating restcomm container"
 
 docker \
-    $(docker-machine config restcomm-node) \
+    $(get_docker_config restcomm-node) \
     run \
     -d \
     --name restcomm \
@@ -80,11 +99,22 @@ docker \
     -e MYSQL_PASSWORD=restcomm \
     -e RC_JAVA_OPTS_EXTRA="$java_opt" \
     -v /opt/Restcomm-JBoss-AS7/standalone/log \
+    -v /opt/perfcorder \
     hamsterksu/restcomm-external-ms
 
 #    -e INIT_PASSWORD=q1w2e3r4t5 \
 #    -e INIT_PASSWORD=42d8aa7cde9c78c4757862d84620c335 \
 #hamsterksu/restcomm-external-ms
+
+docker \
+    $(get_docker_config restcomm-node) \
+    cp \
+    ./tools \
+    restcomm:/opt/perfcorder
+
+docker \
+    $(get_docker_config restcomm-node) \
+    exec -it restcomm /opt/perfcorder/install_perfcorder.sh
 
 echo "*************"
 echo ""
@@ -94,7 +124,7 @@ sleep 15
 
 echo "Creating ivrapp"
 docker \
-    $(docker-machine config ivrapp) \
+    $(get_docker_config ivrapp) \
     run \
     -d \
     --name ivrapp \
@@ -115,7 +145,7 @@ echo ""
 
 echo "Creating collectd-server"
 docker \
-    $(docker-machine config collectd-server) \
+    $(get_docker_config collectd-server) \
     run \
     -d \
     --net host \
@@ -136,13 +166,13 @@ for service in ${services[*]} ; do
     echo "Add collectd to $service"
 
     docker \
-        $(docker-machine config $service) \
+        $(get_docker_config $service) \
         run \
         -d \
         -c 100 \
         --net host \
         --privileged \
-        --name collectd \
+        --name ${service}-collectd \
         -e COLLECTD_SERVER=$COLLECTD_SERVER_IP_PRIVATE \
         -v /proc:/mnt/proc:ro \
         hamsterksu/collectd
