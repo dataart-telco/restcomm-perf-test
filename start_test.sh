@@ -51,7 +51,7 @@ PHONE_NUMBER=5555
 #run perf collector
 docker  \
     $(get_docker_config restcomm-node) \
-    exec -it restcomm /opt/perfcorder/run_perfcorder.sh
+    exec restcomm /opt/perfcorder/run_perfcorder.d.sh
 
 #reset stat
 curl -s http://${IVRAPP_IP_PUBLIC}:7090/start
@@ -70,7 +70,7 @@ fi
 ########################################################################
 ### Start test container
 ########################################################################
-
+exit 1
 docker \
     $(get_docker_config sipp-test) \
     run \

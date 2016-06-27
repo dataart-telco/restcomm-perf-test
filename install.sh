@@ -84,7 +84,7 @@ docker \
     --name restcomm \
     --net host \
     --privileged \
-    -e INIT_PASSWORD=42d8aa7cde9c78c4757862d84620c335 \
+    -e INIT_PASSWORD=q1w2e3r4t5 \
     -e VOICERSS_KEY=29b2d893df9f454abbfae94df6cff95b \
     -e STATIC_ADDRESS=$RESTCOMM_IP_PUBLIC \
     -e MEDIASERVER_LOWEST_PORT=64000 \
@@ -97,10 +97,10 @@ docker \
     -e MYSQL_SCHEMA=restcomm \
     -e MYSQL_USER=restcomm \
     -e MYSQL_PASSWORD=restcomm \
-    -e RC_JAVA_OPTS_EXTRA="$java_opt" \
+    -e RC_JAVA_OPTS="$java_opt" \
     -v /opt/Restcomm-JBoss-AS7/standalone/log \
     -v /opt/perfcorder \
-    hamsterksu/restcomm-external-ms
+    restcomm/restcomm
 
 #    -e INIT_PASSWORD=q1w2e3r4t5 \
 #    -e INIT_PASSWORD=42d8aa7cde9c78c4757862d84620c335 \
@@ -109,7 +109,25 @@ docker \
 docker \
     $(get_docker_config restcomm-node) \
     cp \
-    ./tools \
+    ./tools/install_perfcorder.sh \
+    restcomm:/opt/perfcorder
+
+docker \
+    $(get_docker_config restcomm-node) \
+    cp \
+    ./tools/run_perfcorder.sh \
+    restcomm:/opt/perfcorder
+
+docker \
+    $(get_docker_config restcomm-node) \
+    cp \
+    ./tools/run_perfcorder.d.sh \
+    restcomm:/opt/perfcorder
+
+docker \
+    $(get_docker_config restcomm-node) \
+    cp \
+    ./tools/stop_perfcorder.sh \
     restcomm:/opt/perfcorder
 
 docker \
@@ -143,40 +161,42 @@ docker \
 echo "****************"
 echo ""
 
-echo "Creating collectd-server"
-docker \
-    $(get_docker_config collectd-server) \
-    run \
-    -d \
-    --net host \
-    --privileged \
-    --name collectd-server \
-    hamsterksu/collectd-server
-echo "****************"
-echo ""
-
-############### add staistic gathering #########################
-services=(
-'restcomm-media'
-'restcomm-node'
-'ivrapp'
-'mysql')
-
-for service in ${services[*]} ; do
-    echo "Add collectd to $service"
-
+if [ "${TEST_ENGINE}" != "local" ]; then
+    echo "Creating collectd-server"
     docker \
-        $(get_docker_config $service) \
+        $(get_docker_config collectd-server) \
         run \
         -d \
-        -c 100 \
         --net host \
         --privileged \
-        --name ${service}-collectd \
-        -e COLLECTD_SERVER=$COLLECTD_SERVER_IP_PRIVATE \
-        -v /proc:/mnt/proc:ro \
-        hamsterksu/collectd
-
+        --name collectd-server \
+        hamsterksu/collectd-server
     echo "****************"
     echo ""
-done
+
+    ############### add staistic gathering #########################
+    services=(
+    'restcomm-media'
+    'restcomm-node'
+    'ivrapp'
+    'mysql')
+
+    for service in ${services[*]} ; do
+        echo "Add collectd to $service"
+
+        docker \
+            $(get_docker_config $service) \
+            run \
+            -d \
+            -c 100 \
+            --net host \
+            --privileged \
+            --name ${service}-collectd \
+            -e COLLECTD_SERVER=$COLLECTD_SERVER_IP_PRIVATE \
+            -v /proc:/mnt/proc:ro \
+            hamsterksu/collectd
+
+        echo "****************"
+        echo ""
+    done
+fi

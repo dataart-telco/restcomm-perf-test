@@ -26,6 +26,4 @@ if [ -z "$RESTCOMM_PID" ]; then
   exit 1
 fi
 
-cd /opt/perfcorder
-
-./pc_start_collect.sh $RESTCOMM_PID
+/opt/perfcorder/pc_start_collect.sh -o /opt/perfcorder $RESTCOMM_PID
