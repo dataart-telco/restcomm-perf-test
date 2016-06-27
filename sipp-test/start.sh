@@ -32,6 +32,7 @@ sipp \
     -recv_timeout 5000 -t un -nr \
     -trace_err -error_file "$LOGS_DIR"/error_"$PHONE_NUMBER"_test.log \
     -trace_msg -message_file "$LOGS_DIR"/message_"$PHONE_NUMBER"_test.log \
+    -fd 1 \
     -trace_stat -stf "$RESULTS_DIR"/stat_"$PHONE_NUMBER"_test.csv \
     -trace_screen -screen_file "$RESULTS_DIR"/screen_"$PHONE_NUMBER"_test.log
 

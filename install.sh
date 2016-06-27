@@ -1,6 +1,7 @@
 #!/bin/bash
 
 source ./machine.sh
+source ./perfcorder.sh
 
 echo "Instance type memory: ${INSTANCES_MEM["$INSTANCE_TYPE"]}"
 
@@ -40,13 +41,13 @@ docker \
 echo "****************"
 echo ""
 
-echo "Wait for restcomm 15 sec"
+echo "Wait for mysql: 15 sec"
 sleep 15
 
 echo "Creating mediaserver container"
 
 docker \
-    $(get_docker_config restcomm-media) \
+    $(get_docker_config mediaserver) \
     run \
     -d \
     --name mediaserver \
@@ -64,6 +65,8 @@ docker \
     -e LOG_LEVEL=WARN \
     -e RESOURCE_player=200 \
     -e JAVA_OPTS="$java_opt" \
+    -v /opt/restcomm-media-server/log \
+    -v /opt/perfcorder \
     hamsterksu/restcomm-mediaserver:4.2.0.68
 
 #hamsterksu/restcomm-mediaserver:cache
@@ -78,7 +81,7 @@ echo ""
 echo "Creating restcomm container"
 
 docker \
-    $(get_docker_config restcomm-node) \
+    $(get_docker_config restcomm) \
     run \
     -d \
     --name restcomm \
@@ -106,33 +109,8 @@ docker \
 #    -e INIT_PASSWORD=42d8aa7cde9c78c4757862d84620c335 \
 #hamsterksu/restcomm-external-ms
 
-docker \
-    $(get_docker_config restcomm-node) \
-    cp \
-    ./tools/install_perfcorder.sh \
-    restcomm:/opt/perfcorder
-
-docker \
-    $(get_docker_config restcomm-node) \
-    cp \
-    ./tools/run_perfcorder.sh \
-    restcomm:/opt/perfcorder
-
-docker \
-    $(get_docker_config restcomm-node) \
-    cp \
-    ./tools/run_perfcorder.d.sh \
-    restcomm:/opt/perfcorder
-
-docker \
-    $(get_docker_config restcomm-node) \
-    cp \
-    ./tools/stop_perfcorder.sh \
-    restcomm:/opt/perfcorder
-
-docker \
-    $(get_docker_config restcomm-node) \
-    exec -it restcomm /opt/perfcorder/install_perfcorder.sh
+perfcorder_install mediaserver
+perfcorder_install restcomm
 
 echo "*************"
 echo ""
@@ -161,42 +139,47 @@ docker \
 echo "****************"
 echo ""
 
-if [ "${TEST_ENGINE}" != "local" ]; then
-    echo "Creating collectd-server"
-    docker \
-        $(get_docker_config collectd-server) \
-        run \
-        -d \
-        --net host \
-        --privileged \
-        --name collectd-server \
-        hamsterksu/collectd-server
-    echo "****************"
-    echo ""
+echo "Creating collectd-server"
+docker \
+    $(get_docker_config collectd-server) \
+    run \
+    -d \
+    --net host \
+    --privileged \
+    --name collectd-server \
+    hamsterksu/collectd-server
+echo "****************"
+echo ""
 
     ############### add staistic gathering #########################
-    services=(
-    'restcomm-media'
-    'restcomm-node'
+if [ "${TEST_ENGINE}" = "local" ]; then
+services=(
+    'localhost'
+)
+else
+services=(
+    'restcomm'
+    'mediaserver'
     'ivrapp'
-    'mysql')
-
-    for service in ${services[*]} ; do
-        echo "Add collectd to $service"
-
-        docker \
-            $(get_docker_config $service) \
-            run \
-            -d \
-            -c 100 \
-            --net host \
-            --privileged \
-            --name ${service}-collectd \
-            -e COLLECTD_SERVER=$COLLECTD_SERVER_IP_PRIVATE \
-            -v /proc:/mnt/proc:ro \
-            hamsterksu/collectd
-
-        echo "****************"
-        echo ""
-    done
+    'mysql'
+)
 fi
+
+for service in ${services[*]} ; do
+    echo "Add collectd to $service"
+
+    docker \
+        $(get_docker_config $service) \
+        run \
+        -d \
+        -c 100 \
+        --net host \
+        --privileged \
+        --name ${service}-collectd \
+        -e COLLECTD_SERVER=$COLLECTD_SERVER_IP_PRIVATE \
+        -v /proc:/mnt/proc:ro \
+        hamsterksu/collectd
+
+    echo "****************"
+    echo ""
+done

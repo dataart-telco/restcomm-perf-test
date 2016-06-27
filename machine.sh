@@ -59,8 +59,8 @@ init_machines(){
         exit 1
     fi
 
-    RESTCOMM_NODE=`exists restcomm-node`
-    RESTCOMM_MEDIA=`exists restcomm-media`
+    RESTCOMM_NODE=`exists restcomm`
+    RESTCOMM_MEDIA=`exists mediaserver`
     MYSQL=`exists mysql`
     IVRAPP=`exists ivrapp`
     COLLECTD_SERVER=`exists collectd-server`
@@ -87,17 +87,17 @@ init_machines(){
     fi
 
     if [ -z "$RESTCOMM_NODE" ]; then
-        echo "Creating restcomm-node instance"
-        create_machine restcomm-node $INSTANCE_TYPE
+        echo "Creating restcomm instance"
+        create_machine restcomm $INSTANCE_TYPE
     fi
 
     if [ -z "$RESTCOMM_MEDIA" ]; then
         echo "Creating restocmm mediaserver instance"
-        create_machine restcomm-media $INSTANCE_TYPE
+        create_machine mediaserver $INSTANCE_TYPE
     fi
 
-    RESTCOMM_NODE=`exists restcomm-node`
-    RESTCOMM_MEDIA=`exists restcomm-media`
+    RESTCOMM_NODE=`exists restcomm`
+    RESTCOMM_MEDIA=`exists mediaserver`
     MYSQL=`exists mysql`
     IVRAPP=`exists ivrapp`
     COLLECTD_SERVER=`exists collectd-server`
@@ -145,11 +145,11 @@ init_machines(){
     MYSQL_IP_PRIVATE=`get_private_ip mysql`
     MYSQL_IP_PUBLIC=`get_public_ip mysql`
 
-    MEDIASERVER_IP_PRIVATE=`get_private_ip restcomm-media`
-    MEDIASERVER_IP_PUBLIC=`get_public_ip restcomm-media`
+    MEDIASERVER_IP_PRIVATE=`get_private_ip mediaserver`
+    MEDIASERVER_IP_PUBLIC=`get_public_ip mediaserver`
 
-    RESTCOMM_IP_PRIVATE=`get_private_ip restcomm-node`
-    RESTCOMM_IP_PUBLIC=`get_public_ip restcomm-node`
+    RESTCOMM_IP_PRIVATE=`get_private_ip restcomm`
+    RESTCOMM_IP_PUBLIC=`get_public_ip restcomm`
 
 }
 
@@ -215,14 +215,14 @@ MYSQL_IP_PRIVATE: $MYSQL_IP_PRIVATE
 "
 
 echo "*** Restcomm node ***
-NOTE: use 'docker-machine ssh restcomm-node' to connect to instance 
+NOTE: use 'docker-machine ssh restcomm' to connect to instance 
 
 RESTCOMM_IP_PUBLIC: $RESTCOMM_IP_PUBLIC
 RESTCOMM_IP_PRIVATE: $RESTCOMM_IP_PRIVATE
 "
 
 echo "*** Mediaserver ***
-NOTE: use 'docker-machine ssh restcomm-media' to connect to instance 
+NOTE: use 'docker-machine ssh mediaserver' to connect to instance 
 
 MEDIASERVER_IP_PUBLIC: $MEDIASERVER_IP_PUBLIC
 MEDIASERVER_IP_PRIVATE: $MEDIASERVER_IP_PRIVATE

@@ -1,4 +1,6 @@
 #!/bin/bash
+source ./perfcorder.sh
+
 if [ -f ./.aws_credentials ]; then
     TEST_ENGINE='aws'
 fi
@@ -36,7 +38,7 @@ if [ -z "${TEST_ENGINE}" ]; then
 else
     source ./machine_util.sh
     COLLECTD_SERVER_IP_PUBLIC=`get_public_ip collectd-server`
-    RESTCOMM_IP_PRIVATE=`get_private_ip restcomm-node`
+    RESTCOMM_IP_PRIVATE=`get_private_ip restcomm`
     IVRAPP_IP_PUBLIC=`get_public_ip ivrapp`
 fi
 
@@ -49,9 +51,8 @@ PHONE_NUMBER=5555
 ########################################################################
 
 #run perf collector
-docker  \
-    $(get_docker_config restcomm-node) \
-    exec restcomm /opt/perfcorder/run_perfcorder.d.sh
+perfcorder_start restcomm
+perfcorder_start mediaserver
 
 #reset stat
 curl -s http://${IVRAPP_IP_PUBLIC}:7090/start
@@ -70,7 +71,7 @@ fi
 ########################################################################
 ### Start test container
 ########################################################################
-exit 1
+
 docker \
     $(get_docker_config sipp-test) \
     run \
@@ -104,15 +105,11 @@ else
 fi
 
 #stop perf collector
-docker  \
-    $(get_docker_config restcomm-node) \
-    exec -it restcomm /opt/perfcorder/stop_perfcorder.sh
+perfcorder_stop restcomm
+perfcorder_stop mediaserver
 
-mkdir -p $RESULT_DIR/perfcorder
-
-docker  \
-    $(get_docker_config restcomm-node) \
-    cp restcomm:/opt/perfcorder/target $RESULT_DIR/perfcorder
+perfcorder_dump restcomm
+perfcorder_dump mediaserver
 
 echo "Rendering results..."
 docker \
@@ -123,11 +120,18 @@ docker \
 
 COLLECTD_URL="http://${COLLECTD_SERVER_IP_PUBLIC}"
 
+if [ "${TEST_ENGINE}" = "local" ]; then
 services=(
-'restcomm-media'
-'restcomm-node'
-'ivrapp'
-'mysql')
+    "$(hostname)"
+)
+else
+services=(
+    'restcomm'
+    'mediaserver'
+    'ivrapp'
+    'mysql'
+)
+fi
 
 for service in ${services[*]}; do
     wget -O $RESULT_DIR/${service}_cpu.png $COLLECTD_URL/${service}_cpu.png
@@ -139,6 +143,23 @@ RESULT_INCOMING=`curl -s http://${IVRAPP_IP_PUBLIC}:7090/stat/incoming`
 RESULT_RECEIVED=`curl -s http://${IVRAPP_IP_PUBLIC}:7090/stat/received`
 
 dif=`echo $RESULT_INCOMING - $RESULT_RECEIVED | bc`
+
+perfcorder_install_local
+
+render_perfcorder_result(){
+    folder=$1
+    echo "folder: $folder"
+    cp $RESULT_DIR/results/*_test.csv $folder/data/periodic/sip/sipp.csv
+    cur=$PWD
+    cd $folder
+    zip -r result.zip data
+    cd $cur
+    $PERFCORDER_LOCAL/pc_analyse.sh $folder/result.zip 1 > $folder/PerfCorderAnalysis.xml
+    cat $folder/PerfCorderAnalysis.xml | $PERFCORDER_LOCAL/pc_test.sh ./xslt/mss-proxy-goals.xsl > $folder/TEST-PerfCorderAnalysisTest.xml
+}
+
+render_perfcorder_result $RESULT_DIR/perfcorder-restcomm
+render_perfcorder_result $RESULT_DIR/perfcorder-mediaserver
 
 ########################################################################
 ### Print result
@@ -153,7 +174,9 @@ echo "Result forlder: $RESULT_DIR"
 
 echo "
 ***Perfcorder data***
-Path: $RESULT_DIR/perfcorder/target
+Restcomm: $RESULT_DIR/perfcorder-restcomm
+Mediaserver: $RESULT_DIR/perfcorder-mediaserver"
+
 
 echo "
 ***Collectd Stats***
