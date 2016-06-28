@@ -1,13 +1,6 @@
 #!/bin/bash
 
-if [ -f ./.aws_credentials ]; then
-    source ./.aws_credentials
-fi
-
-if [ -f ./.openstack_credentials ]; then
-    source ./.openstack_credentials
-fi
-
+source ./config.sh
 source ./machine_util.sh
 
 create_machine(){
@@ -53,11 +46,12 @@ create_machine_aws(){
 }
 
 init_machines(){
-
     if [ -z "$AWS_KEY" ] && [ -z "$OPENSTACK_USER" ]; then
         echo "No credentials are provided"
         exit 1
     fi
+
+    echo "Init cloud machines"
 
     RESTCOMM_NODE=`exists restcomm`
     RESTCOMM_MEDIA=`exists mediaserver`
@@ -104,32 +98,38 @@ init_machines(){
     SIPP_TEST=`exists sipp-test`
 
     if [ -z "$SIPP_TEST" ]; then
-        echo "sipp-test server instance does not exist"
+        echo ""
+        echo "ERROR: sipp-test server instance does not exist"
         exit 1
     fi
 
     if [ -z "$COLLECTD_SERVER" ]; then
-        echo "collect.d server instance does not exist"
+        echo ""
+        echo "ERROR: collect.d server instance does not exist"
         exit 1
     fi
 
     if [ -z "$IVRAPP" ]; then
-        echo "ivrp instance does not exist"
+        echo ""
+        echo "ERROR: ivrp instance does not exist"
         exit 1
     fi
 
     if [ -z "$MYSQL" ]; then
-        echo "Mysql instance does not exist"
+        echo ""
+        echo "ERROR: Mysql instance does not exist"
         exit 1
     fi
 
     if [ -z "$RESTCOMM_NODE" ]; then
-        echo "Restcomm node instance does not exist"
+        echo ""
+        echo "ERROR: Restcomm node instance does not exist"
         exit 1
     fi
 
     if [ -z "$RESTCOMM_MEDIA" ]; then
-        echo "Restcomm mediaserver instance does not exist"
+        echo ""
+        echo "ERROR: Restcomm mediaserver instance does not exist"
         exit 1
     fi
 
@@ -153,8 +153,7 @@ init_machines(){
 
 }
 
-if [ -z "${TEST_ENGINE}" ]; then
-    TEST_ENGINE='local'
+if [ "${TEST_ENGINE}" = 'local' ]; then
     echo "Use local env"
     machine_ip=`ip addr show eth0 | grep -o 'inet [0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+' | cut -f2 -d' '`
     SIPP_TEST_IP_PRIVATE=$machine_ip

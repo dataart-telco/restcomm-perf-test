@@ -1,13 +1,6 @@
 #!/bin/bash
 source ./perfcorder.sh
-
-if [ -f ./.aws_credentials ]; then
-    TEST_ENGINE='aws'
-fi
-
-if [ -f ./.openstack_credentials ]; then
-    TEST_ENGINE='openstack'
-fi
+source ./config.sh
 
 usage() {
   echo "----------"
@@ -20,16 +13,7 @@ if [ "$#" -ne 3 ]; then
     exit 1
 fi
 
-get_docker_config(){
-    if [ "$TEST_ENGINE" = 'local' ]; then
-        return 0
-    else
-        echo `docker-machine config $1`
-    fi
-}
-
-if [ -z "${TEST_ENGINE}" ]; then
-    TEST_ENGINE='local'
+if [ "$TEST_ENGINE" = 'local' ]; then
     echo "Use local env"
     machine_ip=`ip addr show eth0 | grep -o 'inet [0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+' | cut -f2 -d' '`
     COLLECTD_SERVER_IP_PUBLIC=$machine_ip
@@ -59,11 +43,15 @@ curl -s http://${IVRAPP_IP_PUBLIC}:7090/start
 
 #copy test
 if [ "$TEST_ENGINE" = 'local' ]; then
+    #remove prev logs
     rm -rf /tmp/sipp-test
     mkdir -p /tmp/sipp-test
     cp -ar $PWD/sipp-test /tmp
     TEST_LOCAL_PATH=/tmp/sipp-test
 else
+    #remove prev data
+    docker-machine ssh sipp-test sudo rm -rf /home/ubuntu/sipp-test
+
     docker-machine scp -r $PWD/sipp-test sipp-test:/home/ubuntu/sipp-test
     TEST_LOCAL_PATH='/home/ubuntu/sipp-test'
 fi
@@ -112,6 +100,7 @@ perfcorder_dump restcomm
 perfcorder_dump mediaserver
 
 echo "Rendering results..."
+echo "Collectd mem: ${INSTANCES_MEM["$INSTANCE_TYPE"]}"
 docker \
     $(get_docker_config collectd-server) \
     exec \
@@ -121,16 +110,16 @@ docker \
 COLLECTD_URL="http://${COLLECTD_SERVER_IP_PUBLIC}"
 
 if [ "${TEST_ENGINE}" = "local" ]; then
-services=(
-    "$(hostname)"
-)
+    services=(
+        "$(hostname)"
+    )
 else
-services=(
-    'restcomm'
-    'mediaserver'
-    'ivrapp'
-    'mysql'
-)
+    services=(
+        'restcomm'
+        'mediaserver'
+        'ivrapp'
+        'mysql'
+    )
 fi
 
 for service in ${services[*]}; do
@@ -152,7 +141,7 @@ render_perfcorder_result(){
     cp $RESULT_DIR/results/*_test.csv $folder/data/periodic/sip/sipp.csv
     cur=$PWD
     cd $folder
-    zip -r result.zip data
+    zip -rq result.zip data
     cd $cur
     $PERFCORDER_LOCAL/pc_analyse.sh $folder/result.zip 1 > $folder/PerfCorderAnalysis.xml
     cat $folder/PerfCorderAnalysis.xml | $PERFCORDER_LOCAL/pc_test.sh ./xslt/mss-proxy-goals.xsl > $folder/TEST-PerfCorderAnalysisTest.xml

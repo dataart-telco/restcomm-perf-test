@@ -15,14 +15,6 @@ if [ ${INSTANCES_MEM["$INSTANCE_TYPE"]} -ge 6 ]; then
     java_opt='-Djava.net.preferIPv4Stack=true -Xms4g -Xmx6g -Xmn512m -XX:MaxPermSize=512m -XX:+CMSIncrementalPacing -XX:CMSIncrementalDutyCycle=100 -XX:CMSIncrementalDutyCycleMin=100 -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode -Dsun.rmi.dgc.client.gcInterval=3600000 -Dsun.rmi.dgc.server.gcInterval=3600000'
 fi
 
-get_docker_config(){
-    if [ "$TEST_ENGINE" = 'local' ]; then
-        return 0
-    else
-        echo `docker-machine config $1`
-    fi
-}
-
 echo "Creating mysql database"
 
 docker \
@@ -52,7 +44,7 @@ docker \
     -d \
     --name mediaserver \
     --net host \
-    --privileged \
+    -e LOG_LEVEL=WARN \
     -e USE_HOST_NETWORK=true \
     -e PROPERTY_externalAddress=$MEDIASERVER_IP_PUBLIC \
     -e PROPERTY_media_lowestPort=64000 \
@@ -61,13 +53,14 @@ docker \
     -e RESOURCE_dtmfDetector=0 \
     -e RESOURCE_dtmfGenerator=0 \
     -e RESOURCE_localConnection=200 \
-    -e ESOURCE_remoteConnection=200 \
-    -e LOG_LEVEL=WARN \
+    -e RESOURCE_remoteConnection=200 \
     -e RESOURCE_player=200 \
     -e JAVA_OPTS="$java_opt" \
-    -v /opt/restcomm-media-server/log \
     -v /opt/perfcorder \
+    -v /opt/restcomm-media-server/log \
     hamsterksu/restcomm-mediaserver:4.2.0.68
+
+#    --privileged \
 
 #hamsterksu/restcomm-mediaserver:cache
 
@@ -86,7 +79,6 @@ docker \
     -d \
     --name restcomm \
     --net host \
-    --privileged \
     -e INIT_PASSWORD=q1w2e3r4t5 \
     -e VOICERSS_KEY=29b2d893df9f454abbfae94df6cff95b \
     -e STATIC_ADDRESS=$RESTCOMM_IP_PUBLIC \
@@ -104,6 +96,8 @@ docker \
     -v /opt/Restcomm-JBoss-AS7/standalone/log \
     -v /opt/perfcorder \
     restcomm/restcomm
+
+#    --privileged \
 
 #    -e INIT_PASSWORD=q1w2e3r4t5 \
 #    -e INIT_PASSWORD=42d8aa7cde9c78c4757862d84620c335 \
