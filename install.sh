@@ -88,6 +88,7 @@ docker \
     -e MEDIASERVER_EXTERNAL_ADDRESS=$MEDIASERVER_IP_PUBLIC \
     -e LOG_LEVEL=WARN \
     -e RESTCOMM_TRACE_LOG='' \
+    -e ENABLE_MYSQL=true, \
     -e MYSQL_HOST=$MYSQL_IP_PRIVATE \
     -e MYSQL_SCHEMA=restcomm \
     -e MYSQL_USER=restcomm \

@@ -17,12 +17,14 @@ for dir in $stat/*/ ; do
   host=`basename $dir`
   echo "dir - ${host}"
   ./render_cpu.sh $host percent $www
+  ./render_load.sh $host $www
   ./render_memory.sh $host $mem_limit $www
   ./render_network.sh $host eth0 $www
 
   echo "
     <center><h2>${host}</h2></center>
     <center><img src='${host}_cpu.png'></center><br>
+    <center><img src='${host}_load.png'></center><br>
     <center><img src='${host}_memory.png'></center><br>
     <center><img src='${host}_network_eth0.png'></center><br>
   " >> $www/index.html

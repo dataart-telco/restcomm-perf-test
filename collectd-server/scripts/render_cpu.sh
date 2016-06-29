@@ -24,16 +24,11 @@ rrdtool graph $file \
  -h 150 \
  --interlaced \
  --font DEFAULT:8:/usr/local/share/rrdtool/fonts/ARIAL8.TTF \
- DEF:a=/var/lib/collectd/rrd/$host/cpu/${prefix}-idle.rrd:value:MAX \
- DEF:b=/var/lib/collectd/rrd/$host/cpu/${prefix}-system.rrd:value:MAX \
- DEF:c=/var/lib/collectd/rrd/$host/cpu/${prefix}-user.rrd:value:MAX \
- DEF:user_avg=/var/lib/collectd/rrd/$host/cpu/${prefix}-user.rrd:value:AVERAGE \
- DEF:sys_avg=/var/lib/collectd/rrd/$host/cpu/${prefix}-system.rrd:value:AVERAGE \
- AREA:b#54eb48:System \
- AREA:c#ebd648:User \
- LINE2:b#2cc320: \
- LINE2:c#e7ad4a: \
- LINE2:user_avg#03A9F4:User_avg \
- LINE2:sys_avg#009688:Sys_avg
+ DEF:system=/var/lib/collectd/rrd/$host/cpu/${prefix}-system.rrd:value:MAX \
+ DEF:user=/var/lib/collectd/rrd/$host/cpu/${prefix}-user.rrd:value:MAX \
+ DEF:wait=/var/lib/collectd/rrd/$host/cpu/${prefix}-wait.rrd:value:MAX \
+ AREA:wait#F44336:"Wait max":STACK \
+ AREA:system#4CAF50:"Sys max":STACK \
+ AREA:user#03A9F4:"User max":STACK 
 
 echo "File: $file"
